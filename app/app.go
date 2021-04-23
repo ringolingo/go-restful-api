@@ -26,18 +26,17 @@ type Article struct {
 var Articles []Article
 
 func (app *App) SetupRouter() {
-	myRouter := app.Router
-	myRouter.HandleFunc("/", homePage)
-	myRouter.HandleFunc("/articles", createNewArticle).Methods("POST")
-	myRouter.HandleFunc("/articles", returnAllArticles)
-	myRouter.HandleFunc("/articles/{id}", deleteArticle).Methods("DELETE")
-	myRouter.HandleFunc("/articles/{id}", updateArticle).Methods("PUT")
-	myRouter.HandleFunc("/articles/{id}", returnSingleArticle)
-	log.Fatal(http.ListenAndServe(":10000", myRouter))
+	app.Router.HandleFunc("/", homePage)
+	app.Router.HandleFunc("/articles", createNewArticle).Methods("POST")
+	app.Router.HandleFunc("/articles", returnAllArticles)
+	app.Router.HandleFunc("/articles/{id}", deleteArticle).Methods("DELETE")
+	app.Router.HandleFunc("/articles/{id}", updateArticle).Methods("PUT")
+	app.Router.HandleFunc("/articles/{id}", returnSingleArticle)
+	app.Router.HandleFunc("/test", app.testFunction).Methods("POST")
 }
 
 func (app *App) testFunction(w http.ResponseWriter, r *http.Request) {
-	_, err := app.Database.Exec("INSERT INTO `test` (name) VALUES ('myname')")
+	_, err := app.Database.Exec("INSERT INTO `test` (name) VALUES ('yourname')")
 	if err != nil {
 		log.Fatal("Database INSERT failed")
 	}
@@ -52,11 +51,22 @@ func homePage(w http.ResponseWriter, r *http.Request) {
 }
 
 func returnAllArticles(w http.ResponseWriter, r *http.Request) {
+	Articles = []Article{
+		{Id: "1", Title: "Hello", Desc: "Article Description", Content: "Article Content"},
+		{Id: "2", Title: "Hello 2", Desc: "Article Description", Content: "Article Content"},
+	}
+
 	fmt.Println("Endpoint Hit: returnAllArticles")
 	json.NewEncoder(w).Encode(Articles)
+
 }
 
 func returnSingleArticle(w http.ResponseWriter, r *http.Request) {
+	Articles = []Article{
+		{Id: "1", Title: "Hello", Desc: "Article Description", Content: "Article Content"},
+		{Id: "2", Title: "Hello 2", Desc: "Article Description", Content: "Article Content"},
+	}
+
 	fmt.Println("Endpoint Hit: returnSingleArticle")
 	vars := mux.Vars(r)
 	key := vars["id"]
@@ -69,6 +79,11 @@ func returnSingleArticle(w http.ResponseWriter, r *http.Request) {
 }
 
 func createNewArticle(w http.ResponseWriter, r *http.Request) {
+	Articles = []Article{
+		{Id: "1", Title: "Hello", Desc: "Article Description", Content: "Article Content"},
+		{Id: "2", Title: "Hello 2", Desc: "Article Description", Content: "Article Content"},
+	}
+	
 	fmt.Println("Endpoint Hit: createNewArticle")
 	reqBody, _ := ioutil.ReadAll(r.Body)
 
@@ -79,6 +94,11 @@ func createNewArticle(w http.ResponseWriter, r *http.Request) {
 }
 
 func deleteArticle(w http.ResponseWriter, r *http.Request) {
+	Articles = []Article{
+		{Id: "1", Title: "Hello", Desc: "Article Description", Content: "Article Content"},
+		{Id: "2", Title: "Hello 2", Desc: "Article Description", Content: "Article Content"},
+	}
+	
 	vars := mux.Vars(r)
 	id := vars["id"]
 
@@ -90,6 +110,11 @@ func deleteArticle(w http.ResponseWriter, r *http.Request) {
 }
 
 func updateArticle(w http.ResponseWriter, r *http.Request) {
+	Articles = []Article{
+		{Id: "1", Title: "Hello", Desc: "Article Description", Content: "Article Content"},
+		{Id: "2", Title: "Hello 2", Desc: "Article Description", Content: "Article Content"},
+	}
+	
 	fmt.Println("Endpoint Hit: updateArticle")
 
 	id := mux.Vars(r)["id"]

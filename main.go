@@ -10,8 +10,8 @@ import (
 
 	// _ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
-	"github.com/ringolingo/go-restful-api/internal/app"
-	"github.com/ringolingo/go-restful-api/internal/db"	
+	"github.com/ringolingo/go-restful-api/app"
+	"github.com/ringolingo/go-restful-api/db"
 )
 
 // func handleRequests() {
@@ -107,5 +107,17 @@ import (
 // }
 
 func main() {
-	
+	database, err := db.CreateDatabase()
+	if err != nil {
+		log.Fatal("Database connection failed: %s", err.Error())
+	}
+
+	app := &app.App{
+		Router:   mux.NewRouter().StrictSlash(true),
+		Database: database,
+	}
+
+	app.SetupRouter()
+
+	log.Fatal(http.ListenAndServe(":8080", app.Router))
 }
