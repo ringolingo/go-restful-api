@@ -51,22 +51,12 @@ func homePage(w http.ResponseWriter, r *http.Request) {
 }
 
 func returnAllArticles(w http.ResponseWriter, r *http.Request) {
-	Articles = []Article{
-		{Id: "1", Title: "Hello", Desc: "Article Description", Content: "Article Content"},
-		{Id: "2", Title: "Hello 2", Desc: "Article Description", Content: "Article Content"},
-	}
-
 	fmt.Println("Endpoint Hit: returnAllArticles")
 	json.NewEncoder(w).Encode(Articles)
 
 }
 
 func returnSingleArticle(w http.ResponseWriter, r *http.Request) {
-	Articles = []Article{
-		{Id: "1", Title: "Hello", Desc: "Article Description", Content: "Article Content"},
-		{Id: "2", Title: "Hello 2", Desc: "Article Description", Content: "Article Content"},
-	}
-
 	fmt.Println("Endpoint Hit: returnSingleArticle")
 	vars := mux.Vars(r)
 	key := vars["id"]
@@ -78,12 +68,7 @@ func returnSingleArticle(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func createNewArticle(w http.ResponseWriter, r *http.Request) {
-	Articles = []Article{
-		{Id: "1", Title: "Hello", Desc: "Article Description", Content: "Article Content"},
-		{Id: "2", Title: "Hello 2", Desc: "Article Description", Content: "Article Content"},
-	}
-	
+func createNewArticle(w http.ResponseWriter, r *http.Request) {	
 	fmt.Println("Endpoint Hit: createNewArticle")
 	reqBody, _ := ioutil.ReadAll(r.Body)
 
@@ -93,12 +78,7 @@ func createNewArticle(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(article)
 }
 
-func deleteArticle(w http.ResponseWriter, r *http.Request) {
-	Articles = []Article{
-		{Id: "1", Title: "Hello", Desc: "Article Description", Content: "Article Content"},
-		{Id: "2", Title: "Hello 2", Desc: "Article Description", Content: "Article Content"},
-	}
-	
+func deleteArticle(w http.ResponseWriter, r *http.Request) {	
 	vars := mux.Vars(r)
 	id := vars["id"]
 
@@ -109,12 +89,7 @@ func deleteArticle(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func updateArticle(w http.ResponseWriter, r *http.Request) {
-	Articles = []Article{
-		{Id: "1", Title: "Hello", Desc: "Article Description", Content: "Article Content"},
-		{Id: "2", Title: "Hello 2", Desc: "Article Description", Content: "Article Content"},
-	}
-	
+func updateArticle(w http.ResponseWriter, r *http.Request) {	
 	fmt.Println("Endpoint Hit: updateArticle")
 
 	id := mux.Vars(r)["id"]
