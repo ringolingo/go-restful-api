@@ -19,93 +19,95 @@ type App struct {
 type Article struct {
 	Id      string `json."Id"`
 	Title   string `json:"Title"`
-	Desc    string `json:"Desc"`
+	Logline string `json:"Logline"`
 	Content string `json:"Content"`
 }
 
-var Articles []Article
+// var Articles []Article
 
 func (app *App) SetupRouter() {
 	app.Router.HandleFunc("/", homePage)
-	app.Router.HandleFunc("/articles", createNewArticle).Methods("POST")
-	app.Router.HandleFunc("/articles", returnAllArticles)
-	app.Router.HandleFunc("/articles/{id}", deleteArticle).Methods("DELETE")
-	app.Router.HandleFunc("/articles/{id}", updateArticle).Methods("PUT")
-	app.Router.HandleFunc("/articles/{id}", returnSingleArticle)
-	app.Router.HandleFunc("/test", app.testFunction).Methods("POST")
-}
-
-func (app *App) testFunction(w http.ResponseWriter, r *http.Request) {
-	_, err := app.Database.Exec("INSERT INTO `test` (name) VALUES ('yourname')")
-	if err != nil {
-		log.Fatal("Database INSERT failed")
-	}
-
-	log.Println("You called a thing!")
-	w.WriteHeader(http.StatusOK)
+	app.Router.HandleFunc("/articles", app.createNewArticle).Methods("POST")
+	app.Router.HandleFunc("/articles", app.returnAllArticles)
+	app.Router.HandleFunc("/articles/{id}", app.deleteArticle).Methods("DELETE")
+	app.Router.HandleFunc("/articles/{id}", app.updateArticle).Methods("PUT")
+	app.Router.HandleFunc("/articles/{id}", app.returnSingleArticle)
 }
 
 func homePage(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Welcome to the HomePage!")
-	fmt.Println("Endpoint Hit: homepage")
 }
 
-func returnAllArticles(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Endpoint Hit: returnAllArticles")
-	json.NewEncoder(w).Encode(Articles)
+func (app *App) returnAllArticles(w http.ResponseWriter, r *http.Request) {
+	var Articles []Article
 
-}
-
-func returnSingleArticle(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Endpoint Hit: returnSingleArticle")
-	vars := mux.Vars(r)
-	key := vars["id"]
-
-	for _, article := range Articles {
-		if article.Id == key {
-			json.NewEncoder(w).Encode(article)
-		}
+	rows, err := app.Database.Query("select * from articles;")
+	if err != nil {
+		log.Fatal("Database SELECT failed")
 	}
+
+	for rows.Next() {
+		var article Article
+		err := rows.Scan(&article.Id, &article.Title, &article.Logline, &article.Content)
+		if err != nil {
+			log.Fatal("Database SCAN failed")
+		}
+		Articles = append(Articles, article)
+	}
+
+	json.NewEncoder(w).Encode(Articles)
 }
 
-func createNewArticle(w http.ResponseWriter, r *http.Request) {	
-	fmt.Println("Endpoint Hit: createNewArticle")
-	reqBody, _ := ioutil.ReadAll(r.Body)
-
-	var article Article
-	json.Unmarshal(reqBody, &article)
-	Articles = append(Articles, article)
-	json.NewEncoder(w).Encode(article)
-}
-
-func deleteArticle(w http.ResponseWriter, r *http.Request) {	
+func (app *App) returnSingleArticle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	for index, article := range Articles {
-		if article.Id == id {
-			Articles = append(Articles[:index], Articles[index+1:]...)
-		}
+	row := app.Database.QueryRow("select * from articles where id = ?", id)
+
+	var article Article
+	err := row.Scan(&article.Id, &article.Title, &article.Logline, &article.Content)
+	if err != nil {
+		json.NewEncoder(w).Encode("No article found with that ID")
+	} else {
+		json.NewEncoder(w).Encode(article)
 	}
 }
 
-func updateArticle(w http.ResponseWriter, r *http.Request) {	
-	fmt.Println("Endpoint Hit: updateArticle")
+func (app *App) createNewArticle(w http.ResponseWriter, r *http.Request) {
+	reqBody, _ := ioutil.ReadAll(r.Body)
+	var article Article
+	json.Unmarshal(reqBody, &article)
 
+	_, err := app.Database.Exec("INSERT INTO `articles` (id, title, logline, content) VALUES (?, ?, ?, ?)", article.Id, article.Title, article.Logline, article.Content)
+	if err != nil {
+		log.Fatal("Database INSERT failed")
+	}
+
+	json.NewEncoder(w).Encode(article)
+}
+
+func (app *App) deleteArticle(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	_, err := app.Database.Exec("delete from articles where id = ?", id)
+	if err != nil {
+		json.NewEncoder(w).Encode("Database DELETE failed")
+	} else {
+		json.NewEncoder(w).Encode("Article deleted")
+	}
+}
+
+func (app *App) updateArticle(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
 	reqBody, _ := ioutil.ReadAll(r.Body)
 	var updated Article
 	json.Unmarshal(reqBody, &updated)
 
-	for i, article := range Articles {
-		if article.Id == id {
-			article.Title = updated.Title
-			article.Desc = updated.Desc
-			article.Content = updated.Content
-
-			Articles[i] = article
-
-			json.NewEncoder(w).Encode(article)
-		}
+	_, err := app.Database.Exec("update articles set id = ?, title = ?, logline = ?, content = ? where id = ?", updated.Id, updated.Title, updated.Logline, updated.Content, id)
+	if err != nil {
+		json.NewEncoder(w).Encode("Database UPDATE failed")
+	} else {
+		json.NewEncoder(w).Encode(updated)
 	}
 }
