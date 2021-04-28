@@ -3,10 +3,12 @@ package app
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
+
+	"github.com/ringolingo/go-restful-api/app/article"
 
 	"github.com/gorilla/mux"
 )
@@ -16,17 +18,7 @@ type App struct {
 	Database *sql.DB
 }
 
-type Article struct {
-	Id      string `json."Id"`
-	Title   string `json:"Title"`
-	Logline string `json:"Logline"`
-	Content string `json:"Content"`
-}
-
-// var Articles []Article
-
 func (app *App) SetupRouter() {
-	app.Router.HandleFunc("/", homePage)
 	app.Router.HandleFunc("/articles", app.createNewArticle).Methods("POST")
 	app.Router.HandleFunc("/articles", app.returnAllArticles)
 	app.Router.HandleFunc("/articles/{id}", app.deleteArticle).Methods("DELETE")
@@ -34,12 +26,8 @@ func (app *App) SetupRouter() {
 	app.Router.HandleFunc("/articles/{id}", app.returnSingleArticle)
 }
 
-func homePage(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Welcome to the HomePage!")
-}
-
 func (app *App) returnAllArticles(w http.ResponseWriter, r *http.Request) {
-	var Articles []Article
+	var Articles []article.Article
 
 	rows, err := app.Database.Query("select * from articles;")
 	if err != nil {
@@ -47,12 +35,12 @@ func (app *App) returnAllArticles(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for rows.Next() {
-		var article Article
-		err := rows.Scan(&article.Id, &article.Title, &article.Logline, &article.Content)
+		var a article.Article
+		err := rows.Scan(&a.Id, &a.Title, &a.Logline, &a.Content)
 		if err != nil {
 			log.Fatal("Database SCAN failed")
 		}
-		Articles = append(Articles, article)
+		Articles = append(Articles, a)
 	}
 
 	json.NewEncoder(w).Encode(Articles)
@@ -64,26 +52,34 @@ func (app *App) returnSingleArticle(w http.ResponseWriter, r *http.Request) {
 
 	row := app.Database.QueryRow("select * from articles where id = ?", id)
 
-	var article Article
-	err := row.Scan(&article.Id, &article.Title, &article.Logline, &article.Content)
+	var a article.Article
+	err := row.Scan(&a.Id, &a.Title, &a.Logline, &a.Content)
 	if err != nil {
 		json.NewEncoder(w).Encode("No article found with that ID")
 	} else {
-		json.NewEncoder(w).Encode(article)
+		json.NewEncoder(w).Encode(a)
 	}
 }
 
 func (app *App) createNewArticle(w http.ResponseWriter, r *http.Request) {
 	reqBody, _ := ioutil.ReadAll(r.Body)
-	var article Article
-	json.Unmarshal(reqBody, &article)
+	var a article.Article
+	json.Unmarshal(reqBody, &a)
+	a.Title = article.FormatTitle(a.Title)
+	a.Logline = article.FormatLogline(a.Logline)
 
-	_, err := app.Database.Exec("INSERT INTO `articles` (id, title, logline, content) VALUES (?, ?, ?, ?)", article.Id, article.Title, article.Logline, article.Content)
+	result, err := app.Database.Exec("INSERT INTO `articles` (title, logline, content) VALUES (?, ?, ?)", a.Title, a.Logline, a.Content)
 	if err != nil {
-		log.Fatal("Database INSERT failed")
+		json.NewEncoder(w).Encode("Database INSERT failed")
+	} else {
+		id, err := result.LastInsertId()
+		if err != nil {
+			json.NewEncoder(w).Encode("Article could not be added")
+		} else {
+			a.Id = id
+			json.NewEncoder(w).Encode(a)
+		}
 	}
-
-	json.NewEncoder(w).Encode(article)
 }
 
 func (app *App) deleteArticle(w http.ResponseWriter, r *http.Request) {
@@ -101,13 +97,17 @@ func (app *App) deleteArticle(w http.ResponseWriter, r *http.Request) {
 func (app *App) updateArticle(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
 	reqBody, _ := ioutil.ReadAll(r.Body)
-	var updated Article
-	json.Unmarshal(reqBody, &updated)
 
-	_, err := app.Database.Exec("update articles set id = ?, title = ?, logline = ?, content = ? where id = ?", updated.Id, updated.Title, updated.Logline, updated.Content, id)
+	var updated article.Article
+	json.Unmarshal(reqBody, &updated)
+	updated.Title = article.FormatTitle(updated.Title)
+	updated.Logline = article.FormatLogline(updated.Logline)
+
+	_, err := app.Database.Exec("update articles set title = ?, logline = ?, content = ? where id = ?", updated.Title, updated.Logline, updated.Content, id)
 	if err != nil {
 		json.NewEncoder(w).Encode("Database UPDATE failed")
 	} else {
+		updated.Id, _ = strconv.ParseInt(id, 10, 64)
 		json.NewEncoder(w).Encode(updated)
 	}
 }
